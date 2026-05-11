@@ -9,6 +9,12 @@ moved {
 
 # ── Locals ───────────────────────────────────────────────────────────────────
 
+variable "ssh_allowed_cidrs" {
+  description = "CIDR blocks allowed to SSH into the instances. Defaults to 0.0.0.0/0 (key-based auth only)."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 locals {
   prefix = "mathis"
 
@@ -22,8 +28,6 @@ locals {
     keypair_wp = "${local.prefix}-keypair-wp-iac"
     keypair_db = "${local.prefix}-keypair-db-iac"
   }
-
-  my_ip_cidr = "${chomp(data.http.my_public_ip.response_body)}/32"
 }
 
 # ── Data sources ──────────────────────────────────────────────────────────────
@@ -45,10 +49,6 @@ data "aws_ami" "al2023" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
-}
-
-data "http" "my_public_ip" {
-  url = "https://checkip.amazonaws.com"
 }
 
 # ── Couche 1 : Infrastructure de base ────────────────────────────────────────
@@ -111,7 +111,7 @@ module "wordpress" {
   subnet_id         = module.network.public_subnet_ids[0]
   ami_id            = data.aws_ami.al2023.id
   key_name          = module.keypair_wordpress.key_name
-  allowed_ssh_cidrs = [local.my_ip_cidr]
+  allowed_ssh_cidrs = var.ssh_allowed_cidrs
 }
 
 # ── Couche 4 : Données ────────────────────────────────────────────────────────
@@ -124,8 +124,8 @@ module "db" {
   subnet_id           = module.network.private_subnet_ids[0]
   ami_id              = data.aws_ami.al2023.id
   key_name            = module.keypair_db.key_name
-  allowed_ssh_cidrs   = [local.my_ip_cidr]
-  allowed_mysql_cidrs = [local.my_ip_cidr]
+  allowed_ssh_cidrs   = var.ssh_allowed_cidrs
+  allowed_mysql_cidrs = var.ssh_allowed_cidrs
   wordpress_sg_ids    = [module.wordpress.security_group_id]
 }
 

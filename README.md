@@ -123,7 +123,21 @@ No required inputs.
 
 ## Optional Inputs
 
-No optional inputs.
+The following input variables are optional (have default values):
+
+### <a name="input_ssh_allowed_cidrs"></a> [ssh\_allowed\_cidrs](#input\_ssh\_allowed\_cidrs)
+
+Description: CIDR blocks allowed to SSH into the instances. Defaults to 0.0.0.0/0 (key-based auth only).
+
+Type: `list(string)`
+
+Default:
+
+```json
+[
+  "0.0.0.0/0"
+]
+```
 
 ## Outputs
 
@@ -172,5 +186,4 @@ The following resources are used by this module:
 - [random_id.s3_suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) (resource)
 - [aws_ami.al2023](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) (data source)
 - [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) (data source)
-- [http_http.my_public_ip](https://registry.terraform.io/providers/hashicorp/http/latest/docs/data-sources/http) (data source)
 <!-- END_TF_DOCS -->
