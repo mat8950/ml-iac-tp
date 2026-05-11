@@ -10,9 +10,13 @@ moved {
 # ── Locals ───────────────────────────────────────────────────────────────────
 
 variable "ssh_allowed_cidrs" {
-  description = "CIDR blocks allowed to SSH into the instances. Defaults to 0.0.0.0/0 (key-based auth only)."
+  description = "CIDR blocks allowed to SSH into the instances."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default = [
+    "37.165.169.117/32",         # Mathis
+    "82.65.78.207/32",           # Alexandre
+    "82.65.78.207/32",           # Nino
+  ]
 }
 
 locals {
