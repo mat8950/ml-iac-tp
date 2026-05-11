@@ -20,7 +20,12 @@ output "wp_admin_password" {
   sensitive   = true
 }
 
-output "ssh_key_arns" {
-  description = "Map of machine name → Secrets Manager ARN for each SSH private key"
-  value       = { for k, s in aws_secretsmanager_secret.ssh_key : k => s.arn }
+output "ssh_key_wordpress_arn" {
+  description = "Secrets Manager ARN for the WordPress SSH private key"
+  value       = aws_secretsmanager_secret.ssh_key_wordpress.arn
+}
+
+output "ssh_key_db_arn" {
+  description = "Secrets Manager ARN for the DB SSH private key"
+  value       = aws_secretsmanager_secret.ssh_key_db.arn
 }

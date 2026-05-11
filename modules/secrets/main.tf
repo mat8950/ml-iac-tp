@@ -46,20 +46,30 @@ resource "aws_secretsmanager_secret_version" "wp_admin" {
   secret_string = random_password.wp_admin.result
 }
 
-resource "aws_secretsmanager_secret" "ssh_key" {
-  for_each = var.ssh_keys
-
-  name                    = "${var.prefix}/ssh/${each.key}"
+resource "aws_secretsmanager_secret" "ssh_key_wordpress" {
+  name                    = "${var.prefix}/ssh/wordpress"
   recovery_window_in_days = 0
 
   tags = {
-    Name = "${var.prefix}-secret-ssh-${each.key}-iac"
+    Name = "${var.prefix}-secret-ssh-wordpress-iac"
   }
 }
 
-resource "aws_secretsmanager_secret_version" "ssh_key" {
-  for_each = var.ssh_keys
+resource "aws_secretsmanager_secret_version" "ssh_key_wordpress" {
+  secret_id     = aws_secretsmanager_secret.ssh_key_wordpress.id
+  secret_string = var.ssh_key_wordpress
+}
 
-  secret_id     = aws_secretsmanager_secret.ssh_key[each.key].id
-  secret_string = each.value
+resource "aws_secretsmanager_secret" "ssh_key_db" {
+  name                    = "${var.prefix}/ssh/db"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.prefix}-secret-ssh-db-iac"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "ssh_key_db" {
+  secret_id     = aws_secretsmanager_secret.ssh_key_db.id
+  secret_string = var.ssh_key_db
 }

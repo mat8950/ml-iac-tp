@@ -3,9 +3,14 @@ variable "prefix" {
   type        = string
 }
 
-variable "ssh_keys" {
-  description = "Map of machine name → private key PEM to store in Secrets Manager"
-  type        = map(string)
-  default     = {}
+variable "ssh_key_wordpress" {
+  description = "Private key PEM for the WordPress instance"
+  type        = string
+  sensitive   = true
+}
+
+variable "ssh_key_db" {
+  description = "Private key PEM for the DB instance"
+  type        = string
   sensitive   = true
 }

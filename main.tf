@@ -97,10 +97,8 @@ module "secrets" {
 
   prefix = local.prefix
 
-  ssh_keys = {
-    wordpress = module.keypair_wordpress.private_key_pem
-    db        = module.keypair_db.private_key_pem
-  }
+  ssh_key_wordpress = module.keypair_wordpress.private_key_pem
+  ssh_key_db        = module.keypair_db.private_key_pem
 }
 
 # ── Couche 3 : Application ────────────────────────────────────────────────────
