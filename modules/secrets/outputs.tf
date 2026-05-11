@@ -19,3 +19,8 @@ output "wp_admin_password" {
   value       = random_password.wp_admin.result
   sensitive   = true
 }
+
+output "ssh_key_arns" {
+  description = "Map of machine name → Secrets Manager ARN for each SSH private key"
+  value       = { for k, s in aws_secretsmanager_secret.ssh_key : k => s.arn }
+}
