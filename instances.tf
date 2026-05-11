@@ -1,18 +1,11 @@
-resource "aws_instance" "wordpress" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.public[0].id
-  vpc_security_group_ids = [aws_security_group.wordpress.id]
-  key_name               = aws_key_pair.main.key_name
-
-  root_block_device {
-    volume_type = "gp2"
-    volume_size = 10
-  }
-
-  tags = {
-    Name = local.name.wp
-  }
+module "wordpress" {
+  source            = "./modules/wordpress"
+  name              = "wp"
+  prefix            = local.prefix
+  ami_id            = data.aws_ami.al2023.id
+  subnet_id         = aws_subnet.public[0].id
+  security_group_id = aws_security_group.wordpress.id
+  key_name          = aws_key_pair.main.key_name
 }
 
 resource "aws_instance" "db" {

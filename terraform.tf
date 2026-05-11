@@ -1,4 +1,9 @@
 terraform {
+  backend "s3" {
+    # Values injected at runtime via terraform init -backend-config in CI
+    # See .github/workflows/
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
