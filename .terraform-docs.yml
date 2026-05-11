@@ -1,0 +1,65 @@
+formatter: "markdown document"
+
+output:
+  file: "README.md"
+  mode: inject
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+
+content: |-
+  ## Dépendances entre modules
+
+  ```mermaid
+  graph BT
+      subgraph L1["Couche 1 · Infrastructure de base"]
+          direction LR
+          network["module.network<br/>./modules/network"]
+          s3["module.s3_media<br/>./modules/s3_bucket"]
+      end
+
+      subgraph L2["Couche 2 · Sécurité & Identité"]
+          direction LR
+          keypair_wp["module.keypair_wordpress<br/>./modules/keypair<br/>→ keys/mathis-keypair-wp-iac.pem"]
+          keypair_db["module.keypair_db<br/>./modules/keypair<br/>→ keys/mathis-keypair-db-iac.pem"]
+          secrets["module.secrets<br/>./modules/secrets"]
+      end
+
+      subgraph L3["Couche 3 · Application"]
+          wordpress["module.wordpress<br/>./modules/wordpress"]
+      end
+
+      subgraph L4["Couche 4 · Données"]
+          db["module.db<br/>./modules/database"]
+      end
+
+      wordpress -- "vpc_id / subnet_id" --> network
+      wordpress -- key_name --> keypair_wp
+      db -- "vpc_id / subnet_id" --> network
+      db -- key_name --> keypair_db
+      db -- sg_id --> wordpress
+  ```
+
+  {{ .Modules }}
+
+  {{ .Inputs }}
+
+  {{ .Outputs }}
+
+  {{ .Resources }}
+
+settings:
+  anchor: true
+  color: true
+  default: true
+  description: false
+  escape: true
+  hide-empty: false
+  html: true
+  indent: 2
+  lockfile: true
+  read-comments: true
+  required: true
+  sensitive: true
+  type: true

@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Name tag for the WordPress instance and its security group"
+  description = "Name tag for the DB instance and its security group"
   type        = string
 }
 
@@ -9,7 +9,7 @@ variable "vpc_id" {
 }
 
 variable "subnet_id" {
-  description = "Public subnet ID where the instance will be deployed"
+  description = "Private subnet ID where the instance will be deployed"
   type        = string
 }
 
@@ -42,26 +42,32 @@ variable "volume_size" {
   default     = 10
 }
 
+variable "mysql_port" {
+  description = "MySQL/MariaDB port"
+  type        = number
+  default     = 3306
+}
+
 variable "allowed_ssh_cidrs" {
   description = "CIDR blocks allowed to SSH into the instance"
   type        = list(string)
   default     = []
 }
 
-variable "http_cidrs" {
-  description = "CIDR blocks allowed on HTTP (port 80)"
+variable "allowed_mysql_cidrs" {
+  description = "Additional CIDR blocks allowed on the MySQL port (e.g. admin IP)"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
 }
 
-variable "https_cidrs" {
-  description = "CIDR blocks allowed on HTTPS (port 443)"
+variable "wordpress_sg_ids" {
+  description = "Security group IDs of WordPress instances allowed to reach MySQL"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
 }
 
 variable "extra_ingress_rules" {
-  description = "Additional ingress rules to add to the security group"
+  description = "Additional ingress rules to add to the DB security group"
   type = list(object({
     description     = string
     from_port       = number
@@ -74,13 +80,13 @@ variable "extra_ingress_rules" {
 }
 
 variable "user_data" {
-  description = "User data script executed on first boot (e.g. WordPress install)"
+  description = "User data script executed on first boot (e.g. DB install/config)"
   type        = string
   default     = null
 }
 
 variable "iam_instance_profile" {
-  description = "IAM instance profile to attach (e.g. for S3 access)"
+  description = "IAM instance profile to attach"
   type        = string
   default     = null
 }

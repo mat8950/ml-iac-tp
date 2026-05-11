@@ -5,11 +5,11 @@ resource "random_password" "db_root" {
 }
 
 resource "aws_secretsmanager_secret" "db_root" {
-  name                    = "${local.prefix}/db/root-password"
+  name                    = "${var.prefix}/db/root-password"
   recovery_window_in_days = 0
 
   tags = {
-    Name = "${local.prefix}-secret-db-root-iac"
+    Name = "${var.prefix}-secret-db-root-iac"
   }
 }
 
@@ -25,11 +25,11 @@ resource "random_password" "wp_admin" {
 }
 
 resource "aws_secretsmanager_secret" "wp_admin" {
-  name                    = "${local.prefix}/wordpress/admin-password"
+  name                    = "${var.prefix}/wordpress/admin-password"
   recovery_window_in_days = 0
 
   tags = {
-    Name = "${local.prefix}-secret-wp-admin-iac"
+    Name = "${var.prefix}-secret-wp-admin-iac"
   }
 }
 

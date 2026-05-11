@@ -7,35 +7,37 @@ locals {
     cidr_blocks     = var.allowed_ssh_cidrs
     security_groups = []
   }] : []
+
+  mysql_from_sg_rules = length(var.wordpress_sg_ids) > 0 ? [{
+    description     = "MySQL from WordPress SG"
+    from_port       = var.mysql_port
+    to_port         = var.mysql_port
+    protocol        = "tcp"
+    cidr_blocks     = []
+    security_groups = var.wordpress_sg_ids
+  }] : []
+
+  mysql_from_cidr_rules = length(var.allowed_mysql_cidrs) > 0 ? [{
+    description     = "MySQL from allowed CIDRs"
+    from_port       = var.mysql_port
+    to_port         = var.mysql_port
+    protocol        = "tcp"
+    cidr_blocks     = var.allowed_mysql_cidrs
+    security_groups = []
+  }] : []
 }
 
 module "sg" {
   source = "../security_group"
 
   name        = "${var.name}-sg"
-  description = "Security group for WordPress instance ${var.name}"
+  description = "Security group for DB instance ${var.name}"
   vpc_id      = var.vpc_id
   tags        = var.tags
 
   ingress_rules = concat(
-    [
-      {
-        description     = "HTTP"
-        from_port       = 80
-        to_port         = 80
-        protocol        = "tcp"
-        cidr_blocks     = var.http_cidrs
-        security_groups = []
-      },
-      {
-        description     = "HTTPS"
-        from_port       = 443
-        to_port         = 443
-        protocol        = "tcp"
-        cidr_blocks     = var.https_cidrs
-        security_groups = []
-      }
-    ],
+    local.mysql_from_sg_rules,
+    local.mysql_from_cidr_rules,
     local.ssh_rules,
     var.extra_ingress_rules
   )
