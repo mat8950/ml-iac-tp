@@ -1,3 +1,12 @@
+# ── Migration d'état (à supprimer après le premier apply réussi) ──────────────
+# Indique à Terraform que module.keypair a été renommé en keypair_wordpress.
+# keypair_db est nouveau (clé dédiée à la DB).
+
+moved {
+  from = module.keypair
+  to   = module.keypair_wordpress
+}
+
 # ── Locals ───────────────────────────────────────────────────────────────────
 
 locals {

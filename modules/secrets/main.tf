@@ -11,6 +11,10 @@ resource "aws_secretsmanager_secret" "db_root" {
   tags = {
     Name = "${var.prefix}-secret-db-root-iac"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "db_root" {
@@ -30,6 +34,10 @@ resource "aws_secretsmanager_secret" "wp_admin" {
 
   tags = {
     Name = "${var.prefix}-secret-wp-admin-iac"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 

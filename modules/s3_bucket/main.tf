@@ -3,6 +3,10 @@ resource "aws_s3_bucket" "this" {
   force_destroy = var.force_destroy
 
   tags = merge({ Name = var.bucket_name }, var.tags)
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
