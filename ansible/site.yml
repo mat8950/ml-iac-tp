@@ -1,0 +1,54 @@
+---
+# ── Récupération des secrets AWS ─────────────────────────────────────────────
+- name: Fetch secrets from AWS Secrets Manager
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Get DB password
+      shell: >
+        aws secretsmanager get-secret-value
+        --region eu-west-1
+        --secret-id mathis/db/root-password
+        --query SecretString
+        --output text
+      register: db_password_raw
+      changed_when: false
+
+    - name: Get WordPress admin password
+      shell: >
+        aws secretsmanager get-secret-value
+        --region eu-west-1
+        --secret-id mathis/wordpress/admin-password
+        --query SecretString
+        --output text
+      register: wp_admin_password_raw
+      changed_when: false
+
+    - name: Store secrets as host facts
+      set_fact:
+        db_password:       "{{ db_password_raw.stdout }}"
+        wp_admin_password: "{{ wp_admin_password_raw.stdout }}"
+        cacheable: true
+
+# ── Serveur DB (PostgreSQL) ───────────────────────────────────────────────────
+- name: Configure DB server
+  hosts: db
+  become: true
+  vars:
+    db_password: "{{ hostvars['localhost']['db_password'] }}"
+  roles:
+    - common
+    - postgresql
+
+# ── Serveur WordPress (Nginx + PHP + WP) ─────────────────────────────────────
+- name: Configure WordPress server
+  hosts: wordpress
+  become: true
+  vars:
+    db_password:       "{{ hostvars['localhost']['db_password'] }}"
+    wp_admin_password: "{{ hostvars['localhost']['wp_admin_password'] }}"
+  roles:
+    - common
+    - nginx
+    - php
+    - wordpress

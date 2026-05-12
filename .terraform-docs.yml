@@ -41,13 +41,6 @@ content: |-
       db -- sg_id --> wordpress
   ```
 
-  {{ .Modules }}
-
-  {{ .Inputs }}
-
-  {{ .Outputs }}
-
-  {{ .Resources }}
 
 settings:
   anchor: true

@@ -1,0 +1,22 @@
+<?php
+
+define( 'DB_NAME',     '{{ wordpress_db_name }}' );
+define( 'DB_USER',     '{{ wordpress_db_user }}' );
+define( 'DB_PASSWORD', '{{ db_password }}' );
+define( 'DB_HOST',     '{{ wordpress_db_host }}:{{ wordpress_db_port }}' );
+define( 'DB_CHARSET',  'utf8' );
+define( 'DB_COLLATE',  '' );
+
+{{ wp_secret_keys.content }}
+
+$table_prefix = 'wp_';
+
+define( 'WP_DEBUG', false );
+define( 'WP_SITEURL', 'http://{{ ansible_host }}' );
+define( 'WP_HOME',    'http://{{ ansible_host }}' );
+
+if ( ! defined( 'ABSPATH' ) ) {
+    define( 'ABSPATH', __DIR__ . '/' );
+}
+
+require_once ABSPATH . 'wp-settings.php';

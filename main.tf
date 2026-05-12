@@ -13,7 +13,7 @@ variable "ssh_allowed_cidrs" {
   description = "CIDR blocks allowed to SSH into the instances."
   type        = list(string)
   default = [
-    "37.165.169.117/32",         # Mathis
+    "37.165.169.0/24",         # Mathis
     "82.65.78.207/32",           # Alexandre
     "82.65.78.207/32",           # Nino
   ]
@@ -128,6 +128,7 @@ module "db" {
   subnet_id           = module.network.private_subnet_ids[0]
   ami_id              = data.aws_ami.al2023.id
   key_name            = module.keypair_db.key_name
+  mysql_port          = 5432
   allowed_ssh_cidrs   = var.ssh_allowed_cidrs
   allowed_mysql_cidrs = var.ssh_allowed_cidrs
   wordpress_sg_ids    = [module.wordpress.security_group_id]

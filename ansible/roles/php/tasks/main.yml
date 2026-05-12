@@ -1,0 +1,31 @@
+---
+- name: Install PHP and required extensions
+  dnf:
+    name:
+      - php
+      - php-fpm
+      - php-pgsql
+      - php-gd
+      - php-mbstring
+      - php-xml
+      - php-curl
+      - php-zip
+      - php-intl
+      - php-opcache
+    state: present
+
+- name: Configure PHP-FPM to run as nginx user
+  lineinfile:
+    path: /etc/php-fpm.d/www.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: "^user =",  line: "user = nginx" }
+    - { regexp: "^group =", line: "group = nginx" }
+  notify: Restart php-fpm
+
+- name: Enable and start PHP-FPM
+  systemd:
+    name: php-fpm
+    enabled: true
+    state: started

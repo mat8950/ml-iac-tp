@@ -1,0 +1,48 @@
+---
+- name: Install PostgreSQL server and Python driver
+  dnf:
+    name:
+      - postgresql15-server
+      - postgresql15
+      - python3-psycopg2
+    state: present
+
+- name: Initialize PostgreSQL data directory
+  command: postgresql-setup --initdb
+  args:
+    creates: /var/lib/pgsql/data/PG_VERSION
+
+- name: Allow PostgreSQL to listen on all interfaces
+  lineinfile:
+    path: /var/lib/pgsql/data/postgresql.conf
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: Restart postgresql
+
+- name: Allow WordPress server to connect (pg_hba.conf)
+  lineinfile:
+    path: /var/lib/pgsql/data/pg_hba.conf
+    line: "host    {{ postgresql_db_name }}    {{ postgresql_db_user }}    {{ hostvars['wordpress']['ansible_host'] }}/32    md5"
+    insertbefore: "^host"
+  notify: Restart postgresql
+
+- name: Enable and start PostgreSQL
+  systemd:
+    name: postgresql
+    enabled: true
+    state: started
+
+- name: Create WordPress database
+  postgresql_db:
+    name: "{{ postgresql_db_name }}"
+    state: present
+  become_user: postgres
+
+- name: Create WordPress database user
+  postgresql_user:
+    name: "{{ postgresql_db_user }}"
+    password: "{{ db_password }}"
+    db: "{{ postgresql_db_name }}"
+    priv: ALL
+    state: present
+  become_user: postgres

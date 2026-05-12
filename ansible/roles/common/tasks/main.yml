@@ -1,0 +1,16 @@
+---
+- name: Update all packages
+  dnf:
+    name: "*"
+    state: latest
+    update_only: true
+
+- name: Install common utilities
+  dnf:
+    name:
+      - curl
+      - wget
+      - unzip
+      - git
+      - tar
+    state: present

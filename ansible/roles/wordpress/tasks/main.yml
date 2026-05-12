@@ -1,0 +1,69 @@
+---
+- name: Download WordPress
+  unarchive:
+    src: https://wordpress.org/latest.tar.gz
+    dest: /tmp
+    remote_src: true
+    creates: /tmp/wordpress
+
+- name: Copy WordPress files to document root
+  copy:
+    src: /tmp/wordpress/
+    dest: "{{ wordpress_root }}/"
+    remote_src: true
+    owner: nginx
+    group: nginx
+    mode: "0755"
+
+- name: Download PG4WP (PostgreSQL for WordPress)
+  get_url:
+    url: https://github.com/PostgreSQL-For-Wordpress/postgresql-for-wordpress/archive/refs/heads/main.zip
+    dest: /tmp/pg4wp.zip
+    mode: "0644"
+
+- name: Unzip PG4WP
+  unarchive:
+    src: /tmp/pg4wp.zip
+    dest: /tmp/
+    remote_src: true
+    creates: /tmp/postgresql-for-wordpress-main
+
+- name: Install PG4WP db.php driver
+  copy:
+    src: /tmp/postgresql-for-wordpress-main/pg4wp/db.php
+    dest: "{{ wordpress_root }}/wp-content/db.php"
+    remote_src: true
+    owner: nginx
+    group: nginx
+    mode: "0644"
+
+- name: Install PG4WP plugin directory
+  copy:
+    src: /tmp/postgresql-for-wordpress-main/
+    dest: "{{ wordpress_root }}/wp-content/plugins/postgresql-for-wordpress/"
+    remote_src: true
+    owner: nginx
+    group: nginx
+
+- name: Fetch WordPress secret keys from API
+  uri:
+    url: https://api.wordpress.org/secret-key/1.1/salt/
+    return_content: true
+  register: wp_secret_keys
+  delegate_to: localhost
+  run_once: true
+
+- name: Deploy wp-config.php
+  template:
+    src: wp-config.php.j2
+    dest: "{{ wordpress_root }}/wp-config.php"
+    owner: nginx
+    group: nginx
+    mode: "0640"
+
+- name: Set correct permissions on WordPress root
+  file:
+    path: "{{ wordpress_root }}"
+    owner: nginx
+    group: nginx
+    recurse: true
