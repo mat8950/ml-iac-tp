@@ -4,11 +4,11 @@
     name: "*"
     state: latest
     update_only: true
+    exclude: curl
 
 - name: Install common utilities
   dnf:
     name:
-      - curl
       - wget
       - unzip
       - git

@@ -12,6 +12,7 @@
       - php-zip
       - php-intl
       - php-opcache
+      - php-mysqli
     state: present
 
 - name: Configure PHP-FPM to run as nginx user

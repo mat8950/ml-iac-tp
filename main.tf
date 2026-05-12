@@ -1,32 +1,7 @@
-# ── Migration d'état (à supprimer après le premier apply réussi) ──────────────
-# Indique à Terraform que module.keypair a été renommé en keypair_wordpress.
-# keypair_db est nouveau (clé dédiée à la DB).
-
-moved {
-  from = module.keypair
-  to   = module.keypair_wordpress
-}
-
 # ── Locals ───────────────────────────────────────────────────────────────────
 
-variable "enable_nat_gateway" {
-  description = "Enable NAT Gateway for private subnet (true during Ansible provisioning only)"
-  type        = bool
-  default     = false
-}
-
-variable "ssh_allowed_cidrs" {
-  description = "CIDR blocks allowed to SSH into the instances."
-  type        = list(string)
-  default = [
-    "37.165.169.0/24",         # Mathis
-    "82.65.78.207/32",           # Alexandre
-    "82.65.78.207/32",           # Nino
-  ]
-}
-
 locals {
-  prefix = "mathis"
+  prefix = var.prefix
 
   name = {
     vpc        = "${local.prefix}-vpc-iac"
