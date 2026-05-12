@@ -77,17 +77,17 @@ jobs:
           chmod 600 ansible/keys/wordpress.pem ansible/keys/db.pem
 
       - name: Generate host_vars
+        env:
+          WP_IP: ${{ needs.terraform-outputs.outputs.wp_ip }}
+          DB_IP: ${{ needs.terraform-outputs.outputs.db_ip }}
         run: |
           mkdir -p ansible/host_vars
-          cat > ansible/host_vars/wp_host.yml << EOF
-          ansible_host: ${{ needs.terraform-outputs.outputs.wp_ip }}
-          ansible_ssh_private_key_file: keys/wordpress.pem
-          EOF
-          cat > ansible/host_vars/db_host.yml << EOF
-          ansible_host: ${{ needs.terraform-outputs.outputs.db_ip }}
-          ansible_ssh_private_key_file: keys/db.pem
-          ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyJump='ec2-user@${{ needs.terraform-outputs.outputs.wp_ip }}'"
-          EOF
+
+          printf 'ansible_host: %s\nansible_ssh_private_key_file: keys/wordpress.pem\n' \
+            "$WP_IP" > ansible/host_vars/wp_host.yml
+
+          printf 'ansible_host: %s\nansible_ssh_private_key_file: keys/db.pem\nansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyJump=ec2-user@%s"\n' \
+            "$DB_IP" "$WP_IP" > ansible/host_vars/db_host.yml
 
       - name: Install Ansible
         run: pip install ansible boto3
