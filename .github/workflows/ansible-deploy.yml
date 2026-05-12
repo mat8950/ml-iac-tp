@@ -119,10 +119,10 @@ jobs:
           DB_IP: ${{ needs.terraform-outputs.outputs.db_ip }}
         run: |
           mkdir -p ansible/host_vars
-          printf 'ansible_host: %s\nansible_ssh_common_args: "-F ~/.ssh/ansible_deploy_config"\n' \
-            "$WP_IP" > ansible/host_vars/wp_host.yml
-          printf 'ansible_host: %s\nansible_ssh_common_args: "-F ~/.ssh/ansible_deploy_config"\n' \
-            "$DB_IP" > ansible/host_vars/db_host.yml
+          printf 'ansible_host: %s\nansible_ssh_common_args: "-F %s/.ssh/ansible_deploy_config"\n' \
+            "$WP_IP" "$HOME" > ansible/host_vars/wp_host.yml
+          printf 'ansible_host: %s\nansible_ssh_common_args: "-F %s/.ssh/ansible_deploy_config"\n' \
+            "$DB_IP" "$HOME" > ansible/host_vars/db_host.yml
           echo "--- wp_host.yml ---" && cat ansible/host_vars/wp_host.yml
           echo "--- db_host.yml ---" && cat ansible/host_vars/db_host.yml
 
