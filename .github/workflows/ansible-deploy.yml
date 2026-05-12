@@ -51,8 +51,8 @@ jobs:
           echo "db_ip=${DB_IP}" >> $GITHUB_OUTPUT
           echo "wordpress_public_ip=${WP_IP}"
           echo "db_private_ip=${DB_IP}"
-          [ -z "$WP_IP" ] && echo "ERROR: wordpress_public_ip output is empty" && exit 1
-          [ -z "$DB_IP" ] && echo "ERROR: db_private_ip output is empty"       && exit 1
+          [ -n "$WP_IP" ] || { echo "ERROR: wordpress_public_ip output is empty"; exit 1; }
+          [ -n "$DB_IP" ] || { echo "ERROR: db_private_ip output is empty";    exit 1; }
 
   # ── Déploiement Ansible ───────────────────────────────────────────────────────
   deploy:
@@ -109,8 +109,8 @@ jobs:
           WP_IP: ${{ needs.terraform-outputs.outputs.wp_ip }}
           DB_IP: ${{ needs.terraform-outputs.outputs.db_ip }}
         run: |
-          [ -z "$WP_IP" ] && echo "ERROR: WP_IP is empty" && exit 1
-          [ -z "$DB_IP" ] && echo "ERROR: DB_IP is empty" && exit 1
+          [ -n "$WP_IP" ] || { echo "ERROR: WP_IP is empty"; exit 1; }
+          [ -n "$DB_IP" ] || { echo "ERROR: DB_IP is empty"; exit 1; }
 
           mkdir -p ansible/host_vars
 
