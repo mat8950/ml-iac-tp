@@ -1,0 +1,124 @@
+---
+# Suppression propre d'un site WordPress sans impacter les autres
+# Usage : ansible-playbook playbooks/destroy-site.yml -e "site_key=site1"
+#
+# ⚠ Irréversible — exécuter un backup avant :
+#   ansible-playbook playbooks/backup.yml -e "site_key=site1"
+
+- name: Validate and confirm
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Check site_key
+      assert:
+        that: site_key is defined
+        fail_msg: "Fournir -e site_key=<nom_du_site>"
+
+    - name: Confirm destruction
+      pause:
+        prompt: >
+          ⚠  Vous allez supprimer définitivement le site '{{ site_key }}'.
+          Tapez 'yes' pour confirmer
+      register: confirm
+      when: not (skip_confirm | default(false) | bool)
+
+    - name: Abort if not confirmed
+      fail:
+        msg: "Destruction annulée"
+      when:
+        - not (skip_confirm | default(false) | bool)
+        - confirm.user_input != 'yes'
+
+# ── Suppression des fichiers WordPress ───────────────────────────────────────
+- name: Remove WordPress files
+  hosts: "{{ site_key }}"
+  become: true
+
+  tasks:
+    - name: Stop Nginx (site only)
+      systemd:
+        name: nginx
+        state: stopped
+
+    - name: Remove WordPress document root
+      file:
+        path: "{{ wordpress_root }}"
+        state: absent
+
+    - name: Remove Nginx vhost config
+      file:
+        path: /etc/nginx/conf.d/wordpress.conf
+        state: absent
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: started
+
+# ── Suppression de la base de données ────────────────────────────────────────
+- name: Remove PostgreSQL database and user
+  hosts: dbservers
+  become: true
+
+  tasks:
+    - name: Remove pg_hba.conf entry for this site
+      lineinfile:
+        path: /var/lib/pgsql/data/pg_hba.conf
+        line: "host    wp_{{ site_key }}    wp_{{ site_key }}    10.0.0.0/24    md5"
+        state: absent
+      notify: Restart postgresql
+
+    - name: Drop database
+      postgresql_db:
+        name: "wp_{{ site_key }}"
+        state: absent
+      become_user: postgres
+
+    - name: Drop database user
+      postgresql_user:
+        name: "wp_{{ site_key }}"
+        state: absent
+      become_user: postgres
+
+  handlers:
+    - name: Restart postgresql
+      systemd:
+        name: postgresql
+        state: restarted
+
+# ── Suppression des secrets AWS ───────────────────────────────────────────────
+- name: Remove AWS secrets for this site
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Delete DB password secret
+      command: >
+        aws secretsmanager delete-secret
+        --secret-id "{{ aws_prefix }}/site/{{ site_key }}/db-password"
+        --force-delete-without-recovery
+        --region {{ aws_region }}
+      failed_when: false
+
+    - name: Delete admin password secret
+      command: >
+        aws secretsmanager delete-secret
+        --secret-id "{{ aws_prefix }}/site/{{ site_key }}/admin-password"
+        --force-delete-without-recovery
+        --region {{ aws_region }}
+      failed_when: false
+
+    - name: Delete SSH key secret
+      command: >
+        aws secretsmanager delete-secret
+        --secret-id "{{ aws_prefix }}/ssh/{{ site_key }}"
+        --force-delete-without-recovery
+        --region {{ aws_region }}
+      failed_when: false
+
+    - name: Remind about Terraform
+      debug:
+        msg: >
+          Site '{{ site_key }}' supprimé.
+          Pensez à retirer '{{ site_key }}' de la variable 'sites' dans variables.tf
+          puis relancer : terraform apply

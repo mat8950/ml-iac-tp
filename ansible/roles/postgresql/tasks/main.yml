@@ -19,11 +19,12 @@
     line: "listen_addresses = '*'"
   notify: Restart postgresql
 
-- name: Allow WordPress server to connect (pg_hba.conf)
+- name: Allow each WordPress server to connect (pg_hba.conf)
   lineinfile:
     path: /var/lib/pgsql/data/pg_hba.conf
-    line: "host    {{ postgresql_db_name }}    {{ postgresql_db_user }}    10.0.0.0/24    md5"
+    line: "host    {{ hostvars[item]['wp_db_name'] }}    {{ hostvars[item]['wp_db_user'] }}    10.0.0.0/24    md5"
     insertbefore: "^host"
+  loop: "{{ groups['webservers'] }}"
   notify: Restart postgresql
 
 - name: Enable and start PostgreSQL
@@ -32,34 +33,39 @@
     enabled: true
     state: started
 
-- name: Create WordPress database
+- name: Create WordPress database per site
   postgresql_db:
-    name: "{{ postgresql_db_name }}"
+    name: "{{ hostvars[item]['wp_db_name'] }}"
     state: present
   become_user: postgres
+  loop: "{{ groups['webservers'] }}"
 
-- name: Create WordPress database user
+- name: Create WordPress database user per site
   postgresql_user:
-    name: "{{ postgresql_db_user }}"
-    password: "{{ db_password }}"
+    name: "{{ hostvars[item]['wp_db_user'] }}"
+    password: "{{ hostvars[item]['wp_db_password'] }}"
     state: present
   become_user: postgres
+  loop: "{{ groups['webservers'] }}"
+  no_log: true
 
-- name: Grant all privileges on WordPress database
+- name: Grant all privileges on database per site
   postgresql_privs:
-    db: "{{ postgresql_db_name }}"
-    role: "{{ postgresql_db_user }}"
+    db: "{{ hostvars[item]['wp_db_name'] }}"
+    role: "{{ hostvars[item]['wp_db_user'] }}"
     type: database
     privs: ALL
     state: present
   become_user: postgres
+  loop: "{{ groups['webservers'] }}"
 
-- name: Grant all privileges on public schema (PostgreSQL 15+)
+- name: Grant all privileges on public schema per site (PostgreSQL 15+)
   postgresql_privs:
-    db: "{{ postgresql_db_name }}"
-    role: "{{ postgresql_db_user }}"
+    db: "{{ hostvars[item]['wp_db_name'] }}"
+    role: "{{ hostvars[item]['wp_db_user'] }}"
     type: schema
     objs: public
     privs: ALL
     state: present
   become_user: postgres
+  loop: "{{ groups['webservers'] }}"

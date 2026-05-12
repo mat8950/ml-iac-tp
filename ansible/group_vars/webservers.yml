@@ -1,0 +1,3 @@
+nginx_port:     80
+wordpress_root: /var/www/wordpress
+wp_db_port:     5432

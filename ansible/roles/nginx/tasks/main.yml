@@ -4,14 +4,6 @@
     name: nginx
     state: present
 
-- name: Create WordPress document root
-  file:
-    path: "{{ wordpress_root }}"
-    state: directory
-    owner: nginx
-    group: nginx
-    mode: "0755"
-
 - name: Deploy WordPress vhost config
   template:
     src: wordpress.conf.j2

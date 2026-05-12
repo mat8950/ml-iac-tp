@@ -20,3 +20,24 @@ variable "ssh_allowed_cidrs" {
   type        = list(string)
   default     = []
 }
+
+variable "sites" {
+  description = "Map of WordPress sites to deploy. Each key is a short site identifier (e.g. 'site1')."
+  type = map(object({
+    site_title  = string
+    admin_user  = string
+    admin_email = string
+  }))
+  default = {
+    site1 = {
+      site_title  = "WordPress Site 1"
+      admin_user  = "admin"
+      admin_email = "admin@site1.example.com"
+    }
+    site2 = {
+      site_title  = "WordPress Site 2"
+      admin_user  = "admin"
+      admin_email = "admin@site2.example.com"
+    }
+  }
+}

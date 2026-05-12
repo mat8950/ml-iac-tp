@@ -1,0 +1,83 @@
+---
+# Sauvegarde d'un site WordPress (DB + uploads) vers S3
+# Usage : ansible-playbook playbooks/backup.yml -e "site_key=site1"
+#
+# La DB est dumpée sur le serveur DB puis rapatriée sur le contrôleur,
+# qui l'envoie sur S3 (la DB est en subnet privé sans accès internet).
+
+- name: Validate
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Check site_key
+      assert:
+        that: site_key is defined
+        fail_msg: "Fournir -e site_key=<nom_du_site>"
+
+    - name: Set backup timestamp
+      set_fact:
+        backup_ts: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+        backup_dir: "/tmp/wp_backup_{{ site_key }}"
+
+# ── Dump PostgreSQL ───────────────────────────────────────────────────────────
+- name: Dump PostgreSQL database
+  hosts: dbservers
+  become: true
+
+  vars:
+    _backup_file: "/tmp/wp_{{ site_key }}_{{ hostvars['localhost']['backup_ts'] }}.sql.gz"
+
+  tasks:
+    - name: Dump database to compressed file
+      shell: >
+        pg_dump -U postgres wp_{{ site_key }} | gzip > {{ _backup_file }}
+      args:
+        creates: "{{ _backup_file }}"
+      become_user: postgres
+
+    - name: Fetch dump to controller
+      fetch:
+        src: "{{ _backup_file }}"
+        dest: "/tmp/wp_backup_{{ site_key }}_{{ hostvars['localhost']['backup_ts'] }}.sql.gz"
+        flat: true
+
+    - name: Remove dump from DB server
+      file:
+        path: "{{ _backup_file }}"
+        state: absent
+
+# ── Upload vers S3 ────────────────────────────────────────────────────────────
+- name: Upload backup to S3
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Upload DB dump to S3
+      command: >
+        aws s3 cp
+        /tmp/wp_backup_{{ site_key }}_{{ backup_ts }}.sql.gz
+        s3://{{ hostvars[site_key]['s3_bucket'] }}/backups/{{ site_key }}/{{ backup_ts }}/db.sql.gz
+        --region {{ aws_region }}
+
+    - name: Remove local dump
+      file:
+        path: "/tmp/wp_backup_{{ site_key }}_{{ backup_ts }}.sql.gz"
+        state: absent
+
+    - name: Show backup location
+      debug:
+        msg: "Backup disponible : s3://{{ hostvars[site_key]['s3_bucket'] }}/backups/{{ site_key }}/{{ backup_ts }}/db.sql.gz"
+
+# ── Sync uploads WordPress vers S3 ───────────────────────────────────────────
+- name: Sync WordPress uploads to S3
+  hosts: "{{ site_key }}"
+  become: true
+
+  tasks:
+    - name: Sync wp-content/uploads to S3
+      command: >
+        aws s3 sync
+        {{ wordpress_root }}/wp-content/uploads/
+        s3://{{ s3_bucket }}/backups/{{ site_key }}/{{ hostvars['localhost']['backup_ts'] }}/uploads/
+        --region {{ aws_region }}
+      changed_when: false

@@ -1,9 +1,9 @@
 <?php
 
-define( 'DB_NAME',     '{{ wordpress_db_name }}' );
-define( 'DB_USER',     '{{ wordpress_db_user }}' );
-define( 'DB_PASSWORD', '{{ db_password }}' );
-define( 'DB_HOST',     '{{ wordpress_db_host }}:{{ wordpress_db_port }}' );
+define( 'DB_NAME',     '{{ wp_db_name }}' );
+define( 'DB_USER',     '{{ wp_db_user }}' );
+define( 'DB_PASSWORD', '{{ wp_db_password }}' );
+define( 'DB_HOST',     '{{ db_host }}:{{ wp_db_port }}' );
 define( 'DB_CHARSET',  'utf8' );
 define( 'DB_COLLATE',  '' );
 
@@ -12,8 +12,14 @@ define( 'DB_COLLATE',  '' );
 $table_prefix = 'wp_';
 
 define( 'WP_DEBUG', false );
-define( 'WP_SITEURL', 'http://{{ ansible_host }}' );
-define( 'WP_HOME',    'http://{{ ansible_host }}' );
+define( 'WP_SITEURL', '{{ wp_url }}' );
+define( 'WP_HOME',    '{{ wp_url }}' );
+
+/* S3 — WP Offload Media Lite : provider + credentials via IAM instance role (bucket configuré en BDD) */
+define( 'AS3CF_SETTINGS', serialize( array(
+    'provider'         => 'aws',
+    'use-server-roles' => true,
+) ) );
 
 if ( ! defined( 'ABSPATH' ) ) {
     define( 'ABSPATH', __DIR__ . '/' );

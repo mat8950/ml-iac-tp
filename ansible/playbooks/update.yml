@@ -1,0 +1,31 @@
+---
+# Mise à jour des plugins et thèmes WordPress sur tous les sites
+# Usage : ansible-playbook playbooks/update.yml
+#    ou  : ansible-playbook playbooks/update.yml -e "site_key=site1"  (un seul site)
+- name: Update WordPress plugins and themes
+  hosts: "{{ site_key | default('webservers') }}"
+  become: true
+
+  tasks:
+    - name: Update all plugins
+      command: >
+        wp plugin update --all
+        --path="{{ wordpress_root }}"
+        --allow-root
+      register: plugin_update
+      changed_when: "'Updated' in plugin_update.stdout"
+
+    - name: Update all themes
+      command: >
+        wp theme update --all
+        --path="{{ wordpress_root }}"
+        --allow-root
+      register: theme_update
+      changed_when: "'Updated' in theme_update.stdout"
+
+    - name: Run WordPress database upgrade
+      command: >
+        wp core update-db
+        --path="{{ wordpress_root }}"
+        --allow-root
+      changed_when: false

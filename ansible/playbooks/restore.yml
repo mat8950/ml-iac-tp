@@ -1,0 +1,85 @@
+---
+# Restauration d'un site WordPress depuis S3
+# Usage : ansible-playbook playbooks/restore.yml \
+#           -e "site_key=site1 backup_ts=20260512_143000"
+#
+# Lister les backups disponibles :
+#   aws s3 ls s3://<bucket>/backups/<site_key>/
+
+- name: Validate
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Check required variables
+      assert:
+        that:
+          - site_key is defined
+          - backup_ts is defined
+        fail_msg: "Fournir -e site_key=<site> -e backup_ts=<YYYYMMDD_HHMMSS>"
+
+    - name: Download DB dump from S3
+      command: >
+        aws s3 cp
+        s3://{{ hostvars[site_key]['s3_bucket'] }}/backups/{{ site_key }}/{{ backup_ts }}/db.sql.gz
+        /tmp/wp_restore_{{ site_key }}_{{ backup_ts }}.sql.gz
+        --region {{ aws_region }}
+
+# ── Restauration PostgreSQL ───────────────────────────────────────────────────
+- name: Restore PostgreSQL database
+  hosts: dbservers
+  become: true
+
+  vars:
+    _restore_file: "/tmp/wp_restore_{{ site_key }}_{{ hostvars['localhost']['backup_ts'] }}.sql.gz"
+
+  tasks:
+    - name: Copy dump to DB server
+      copy:
+        src: "/tmp/wp_restore_{{ site_key }}_{{ hostvars['localhost']['backup_ts'] }}.sql.gz"
+        dest: "{{ _restore_file }}"
+        mode: "0600"
+
+    - name: Drop existing database
+      postgresql_db:
+        name: "wp_{{ site_key }}"
+        state: absent
+      become_user: postgres
+
+    - name: Recreate database
+      postgresql_db:
+        name: "wp_{{ site_key }}"
+        state: present
+      become_user: postgres
+
+    - name: Grant schema privilege
+      postgresql_privs:
+        db: "wp_{{ site_key }}"
+        role: "wp_{{ site_key }}"
+        type: schema
+        objs: public
+        privs: ALL
+        state: present
+      become_user: postgres
+
+    - name: Restore dump
+      shell: "gunzip -c {{ _restore_file }} | psql -U postgres wp_{{ site_key }}"
+      become_user: postgres
+
+    - name: Remove restore file from DB server
+      file:
+        path: "{{ _restore_file }}"
+        state: absent
+
+# ── Nettoyage contrôleur ─────────────────────────────────────────────────────
+- name: Cleanup local restore file
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Remove local dump
+      file:
+        path: "/tmp/wp_restore_{{ site_key }}_{{ backup_ts }}.sql.gz"
+        state: absent
+
+    - name: Show result
+      debug:
+        msg: "Site {{ site_key }} restauré depuis le backup {{ backup_ts }}"

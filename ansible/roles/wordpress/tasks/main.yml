@@ -1,19 +1,28 @@
 ---
-- name: Download WordPress
-  unarchive:
-    src: https://wordpress.org/latest.tar.gz
-    dest: /tmp
-    remote_src: true
-    creates: /tmp/wordpress
+# ── WP-CLI ────────────────────────────────────────────────────────────────────
 
-- name: Copy WordPress files to document root
-  copy:
-    src: /tmp/wordpress/
-    dest: "{{ wordpress_root }}/"
-    remote_src: true
+- name: Install WP-CLI
+  get_url:
+    url: https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    dest: /usr/local/bin/wp
+    mode: "0755"
+
+# ── WordPress core ────────────────────────────────────────────────────────────
+
+- name: Create WordPress document root
+  file:
+    path: "{{ wordpress_root }}"
+    state: directory
     owner: nginx
     group: nginx
     mode: "0755"
+
+- name: Download WordPress
+  command: wp core download --path="{{ wordpress_root }}" --allow-root
+  args:
+    creates: "{{ wordpress_root }}/wp-load.php"
+
+# ── PG4WP (driver PostgreSQL pour WordPress) ──────────────────────────────────
 
 - name: Download PG4WP v3.3.1
   get_url:
@@ -53,14 +62,14 @@
     owner: nginx
     group: nginx
 
+# ── wp-config.php ─────────────────────────────────────────────────────────────
+
 - name: Fetch WordPress secret keys from API
   uri:
     url: https://api.wordpress.org/secret-key/1.1/salt/
     return_content: true
   register: wp_secret_keys
-  delegate_to: localhost
-  become: false
-  run_once: true
+  changed_when: false
 
 - name: Deploy wp-config.php
   template:
@@ -70,9 +79,115 @@
     group: nginx
     mode: "0640"
 
+# ── Permissions ───────────────────────────────────────────────────────────────
+
 - name: Set correct permissions on WordPress root
   file:
     path: "{{ wordpress_root }}"
     owner: nginx
     group: nginx
     recurse: true
+
+# ── Installation WordPress (idempotent) ───────────────────────────────────────
+
+- name: Check if WordPress is already installed
+  command: wp core is-installed --path="{{ wordpress_root }}" --allow-root
+  register: wp_is_installed
+  failed_when: false
+  changed_when: false
+
+- name: Install WordPress via WP-CLI
+  command: >
+    wp core install
+    --path="{{ wordpress_root }}"
+    --url="{{ wp_url }}"
+    --title="{{ site_title }}"
+    --admin_user="{{ wp_admin_user }}"
+    --admin_password="{{ wp_admin_password }}"
+    --admin_email="{{ wp_admin_email }}"
+    --skip-email
+    --allow-root
+  when: wp_is_installed.rc != 0
+  no_log: true
+
+- name: Ensure admin password is current
+  command: >
+    wp user update {{ wp_admin_user }}
+    --user_pass="{{ wp_admin_password }}"
+    --path="{{ wordpress_root }}"
+    --allow-root
+  no_log: true
+  changed_when: false
+
+# ── Thème ─────────────────────────────────────────────────────────────────────
+
+- name: Install theme
+  command: >
+    wp theme install inspiro
+    --path="{{ wordpress_root }}"
+    --allow-root
+  register: theme_install
+  changed_when: "'Installing' in theme_install.stdout"
+  failed_when: >
+      theme_install.rc != 0 and
+      'already installed' not in (theme_install.stdout + (theme_install.stderr | default(''))) and
+      'Theme installed successfully' not in theme_install.stdout
+
+- name: Activate theme
+  command: >
+    wp theme activate inspiro
+    --path="{{ wordpress_root }}"
+    --allow-root
+  register: theme_activate
+  changed_when: "'Activated' in theme_activate.stdout"
+
+# ── Permaliens ────────────────────────────────────────────────────────────────
+
+- name: Configure permalink structure
+  command: >
+    wp option update permalink_structure '/%postname%/'
+    --path="{{ wordpress_root }}"
+    --allow-root
+  changed_when: false
+
+# ── S3 sync (systemd timer — contourne les incompatibilités PG4WP) ────────────
+
+- name: Deploy wp-s3-sync systemd service
+  copy:
+    dest: /etc/systemd/system/wp-s3-sync.service
+    content: |
+      [Unit]
+      Description=WordPress uploads sync to S3
+
+      [Service]
+      Type=oneshot
+      User=nginx
+      ExecStart=/usr/bin/aws s3 sync {{ wordpress_root }}/wp-content/uploads/ s3://{{ s3_bucket }}/{{ site_key }}/uploads/ --region {{ aws_region }} --delete
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy wp-s3-sync systemd timer
+  copy:
+    dest: /etc/systemd/system/wp-s3-sync.timer
+    content: |
+      [Unit]
+      Description=WordPress uploads sync to S3 every 5 min
+
+      [Timer]
+      OnBootSec=2min
+      OnUnitActiveSec=5min
+
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+
+- name: Enable and start wp-s3-sync timer
+  systemd:
+    name: wp-s3-sync.timer
+    enabled: true
+    state: started
+    daemon_reload: true
