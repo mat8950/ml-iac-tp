@@ -64,6 +64,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=ml-iac-tp/terraform.tfstate" \
+            -backend-config="region=eu-west-1" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="encrypt=true"
+
+      - name: Enable NAT Gateway
+        run: terraform apply -auto-approve -var="enable_nat_gateway=true"
+
       - name: Write vault password
         run: echo "$VAULT_PASS" > ansible/.vault_pass && chmod 600 ansible/.vault_pass
         env:
@@ -87,55 +104,35 @@ jobs:
           WP_IP: ${{ needs.terraform-outputs.outputs.wp_ip }}
           DB_IP: ${{ needs.terraform-outputs.outputs.db_ip }}
         run: |
+          [ -n "$WP_IP" ] || { echo "ERROR: WP_IP is empty"; exit 1; }
+          [ -n "$DB_IP" ] || { echo "ERROR: DB_IP is empty"; exit 1; }
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          cat > ~/.ssh/config << EOF
-          Host ${WP_IP}
-            User ec2-user
-            IdentityFile ${GITHUB_WORKSPACE}/ansible/keys/wordpress.pem
-            StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null
-
-          Host ${DB_IP}
-            User ec2-user
-            IdentityFile ${GITHUB_WORKSPACE}/ansible/keys/db.pem
-            ProxyJump ec2-user@${WP_IP}
-            StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null
-          EOF
-          chmod 600 ~/.ssh/config
+          printf 'Host %s\n  User ec2-user\n  IdentityFile "%s/ansible/keys/wordpress.pem"\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  ServerAliveInterval 30\n  ServerAliveCountMax 10\n\nHost %s\n  User ec2-user\n  IdentityFile "%s/ansible/keys/db.pem"\n  ProxyJump ec2-user@%s\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  ServerAliveInterval 30\n  ServerAliveCountMax 10\n' \
+            "$WP_IP" "$GITHUB_WORKSPACE" \
+            "$DB_IP" "$GITHUB_WORKSPACE" "$WP_IP" \
+            > ~/.ssh/ansible_deploy_config
+          chmod 600 ~/.ssh/ansible_deploy_config
 
       - name: Generate host_vars
         env:
           WP_IP: ${{ needs.terraform-outputs.outputs.wp_ip }}
           DB_IP: ${{ needs.terraform-outputs.outputs.db_ip }}
         run: |
-          [ -n "$WP_IP" ] || { echo "ERROR: WP_IP is empty"; exit 1; }
-          [ -n "$DB_IP" ] || { echo "ERROR: DB_IP is empty"; exit 1; }
-          python3 << 'PYEOF'
-          import os, pathlib
-          wp_ip = os.environ['WP_IP']
-          db_ip = os.environ['DB_IP']
-          gw    = os.environ['GITHUB_WORKSPACE']
-          pathlib.Path('ansible/host_vars').mkdir(parents=True, exist_ok=True)
-          pathlib.Path('ansible/host_vars/wp_host.yml').write_text(
-              f'ansible_host: {wp_ip}\n'
-              f'ansible_ssh_private_key_file: {gw}/ansible/keys/wordpress.pem\n'
-          )
-          pathlib.Path('ansible/host_vars/db_host.yml').write_text(
-              f'ansible_host: {db_ip}\n'
-              f'ansible_ssh_private_key_file: {gw}/ansible/keys/db.pem\n'
-          )
-          print(open('ansible/host_vars/wp_host.yml').read())
-          print(open('ansible/host_vars/db_host.yml').read())
-          PYEOF
+          mkdir -p ansible/host_vars
+          printf 'ansible_host: %s\nansible_ssh_common_args: "-F ~/.ssh/ansible_deploy_config"\n' \
+            "$WP_IP" > ansible/host_vars/wp_host.yml
+          printf 'ansible_host: %s\nansible_ssh_common_args: "-F ~/.ssh/ansible_deploy_config"\n' \
+            "$DB_IP" > ansible/host_vars/db_host.yml
+          echo "--- wp_host.yml ---" && cat ansible/host_vars/wp_host.yml
+          echo "--- db_host.yml ---" && cat ansible/host_vars/db_host.yml
 
       - name: Install Ansible
         run: pip install ansible boto3
 
-      - name: Debug inventory
-        working-directory: ansible
-        run: ansible-inventory --list -y
-
       - name: Run Ansible playbook
         working-directory: ansible
         run: ansible-playbook site.yml
+
+      - name: Disable NAT Gateway
+        if: always()
+        run: terraform apply -auto-approve -var="enable_nat_gateway=false"

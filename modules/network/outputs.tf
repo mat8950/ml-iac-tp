@@ -33,6 +33,11 @@ output "private_route_table_id" {
   value       = aws_route_table.private.id
 }
 
+output "nat_gateway_ip" {
+  description = "Public IP of the NAT Gateway (null when disabled)"
+  value       = var.enable_nat_gateway ? aws_eip.nat[0].public_ip : null
+}
+
 output "availability_zones" {
   description = "List of AZs used"
   value       = local.azs

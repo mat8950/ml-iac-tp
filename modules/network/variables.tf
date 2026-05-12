@@ -45,6 +45,12 @@ variable "private_subnet_netnum_offset" {
   default     = 10
 }
 
+variable "enable_nat_gateway" {
+  description = "Create a NAT Gateway for private subnet internet egress (enable only during provisioning)"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Additional tags to apply to all resources"
   type        = map(string)

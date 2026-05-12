@@ -9,6 +9,12 @@ moved {
 
 # ── Locals ───────────────────────────────────────────────────────────────────
 
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway for private subnet (true during Ansible provisioning only)"
+  type        = bool
+  default     = false
+}
+
 variable "ssh_allowed_cidrs" {
   description = "CIDR blocks allowed to SSH into the instances."
   type        = list(string)
@@ -64,8 +70,9 @@ resource "random_id" "s3_suffix" {
 module "network" {
   source = "./modules/network"
 
-  name     = local.prefix
-  vpc_cidr = "10.0.0.0/16"
+  name               = local.prefix
+  vpc_cidr           = "10.0.0.0/16"
+  enable_nat_gateway = var.enable_nat_gateway
 }
 
 module "s3_media" {
