@@ -45,8 +45,14 @@ jobs:
       - name: Get Terraform outputs
         id: tf
         run: |
-          echo "wp_ip=$(terraform output -raw wordpress_public_ip)" >> $GITHUB_OUTPUT
-          echo "db_ip=$(terraform output -raw db_private_ip)"       >> $GITHUB_OUTPUT
+          WP_IP=$(terraform output -raw wordpress_public_ip)
+          DB_IP=$(terraform output -raw db_private_ip)
+          echo "wp_ip=${WP_IP}" >> $GITHUB_OUTPUT
+          echo "db_ip=${DB_IP}" >> $GITHUB_OUTPUT
+          echo "wordpress_public_ip=${WP_IP}"
+          echo "db_private_ip=${DB_IP}"
+          [ -z "$WP_IP" ] && echo "ERROR: wordpress_public_ip output is empty" && exit 1
+          [ -z "$DB_IP" ] && echo "ERROR: db_private_ip output is empty"       && exit 1
 
   # ── Déploiement Ansible ───────────────────────────────────────────────────────
   deploy:
@@ -103,6 +109,9 @@ jobs:
           WP_IP: ${{ needs.terraform-outputs.outputs.wp_ip }}
           DB_IP: ${{ needs.terraform-outputs.outputs.db_ip }}
         run: |
+          [ -z "$WP_IP" ] && echo "ERROR: WP_IP is empty" && exit 1
+          [ -z "$DB_IP" ] && echo "ERROR: DB_IP is empty" && exit 1
+
           mkdir -p ansible/host_vars
 
           printf 'ansible_host: "%s"\nansible_ssh_private_key_file: "%s/ansible/keys/wordpress.pem"\n' \
