@@ -1,4 +1,0 @@
-postgresql_version:  "15"
-postgresql_port:     5432
-postgresql_db_name:  wordpress
-postgresql_db_user:  wordpress
