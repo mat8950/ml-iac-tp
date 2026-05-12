@@ -111,21 +111,30 @@ jobs:
         run: |
           [ -n "$WP_IP" ] || { echo "ERROR: WP_IP is empty"; exit 1; }
           [ -n "$DB_IP" ] || { echo "ERROR: DB_IP is empty"; exit 1; }
-
-          mkdir -p ansible/host_vars
-
-          printf 'ansible_host: "%s"\nansible_ssh_private_key_file: "%s/ansible/keys/wordpress.pem"\n' \
-            "$WP_IP" "$GITHUB_WORKSPACE" > ansible/host_vars/wp_host.yml
-
-          printf 'ansible_host: "%s"\nansible_ssh_private_key_file: "%s/ansible/keys/db.pem"\n' \
-            "$DB_IP" "$GITHUB_WORKSPACE" > ansible/host_vars/db_host.yml
-
-          echo "=== wp_ip=${WP_IP} db_ip=${DB_IP} ==="
-          echo "--- wp_host.yml ---" && cat ansible/host_vars/wp_host.yml
-          echo "--- db_host.yml ---" && cat ansible/host_vars/db_host.yml
+          python3 << 'PYEOF'
+          import os, pathlib
+          wp_ip = os.environ['WP_IP']
+          db_ip = os.environ['DB_IP']
+          gw    = os.environ['GITHUB_WORKSPACE']
+          pathlib.Path('ansible/host_vars').mkdir(parents=True, exist_ok=True)
+          pathlib.Path('ansible/host_vars/wp_host.yml').write_text(
+              f'ansible_host: {wp_ip}\n'
+              f'ansible_ssh_private_key_file: {gw}/ansible/keys/wordpress.pem\n'
+          )
+          pathlib.Path('ansible/host_vars/db_host.yml').write_text(
+              f'ansible_host: {db_ip}\n'
+              f'ansible_ssh_private_key_file: {gw}/ansible/keys/db.pem\n'
+          )
+          print(open('ansible/host_vars/wp_host.yml').read())
+          print(open('ansible/host_vars/db_host.yml').read())
+          PYEOF
 
       - name: Install Ansible
         run: pip install ansible boto3
+
+      - name: Debug inventory
+        working-directory: ansible
+        run: ansible-inventory --list -y
 
       - name: Run Ansible playbook
         working-directory: ansible
