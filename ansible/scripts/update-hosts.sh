@@ -29,12 +29,12 @@ echo "  DB        : ${DB_IP}"
 # ── Génération des host_vars ──────────────────────────────────────────────────
 mkdir -p "${ANSIBLE_DIR}/host_vars"
 
-cat > "${ANSIBLE_DIR}/host_vars/wordpress.yml" << EOF
+cat > "${ANSIBLE_DIR}/host_vars/wp_host.yml" << EOF
 ansible_host: ${WP_IP}
 ansible_ssh_private_key_file: keys/wordpress.pem
 EOF
 
-cat > "${ANSIBLE_DIR}/host_vars/db.yml" << EOF
+cat > "${ANSIBLE_DIR}/host_vars/db_host.yml" << EOF
 ansible_host: ${DB_IP}
 ansible_ssh_private_key_file: keys/db.pem
 ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyJump='ec2-user@${WP_IP}'"
@@ -44,8 +44,8 @@ EOF
 echo "→ Chiffrement des host_vars..."
 ansible-vault encrypt \
   --vault-password-file "${ANSIBLE_DIR}/.vault_pass" \
-  "${ANSIBLE_DIR}/host_vars/wordpress.yml" \
-  "${ANSIBLE_DIR}/host_vars/db.yml"
+  "${ANSIBLE_DIR}/host_vars/wp_host.yml" \
+  "${ANSIBLE_DIR}/host_vars/db_host.yml"
 
-echo "✓ host_vars/wordpress.yml et host_vars/db.yml chiffrés avec succès."
+echo "✓ host_vars/wp_host.yml et host_vars/db_host.yml chiffrés avec succès."
 echo "  Lance le playbook avec : ansible-playbook site.yml"

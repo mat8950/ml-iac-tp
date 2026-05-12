@@ -79,11 +79,11 @@ jobs:
       - name: Generate host_vars
         run: |
           mkdir -p ansible/host_vars
-          cat > ansible/host_vars/wordpress.yml << EOF
+          cat > ansible/host_vars/wp_host.yml << EOF
           ansible_host: ${{ needs.terraform-outputs.outputs.wp_ip }}
           ansible_ssh_private_key_file: keys/wordpress.pem
           EOF
-          cat > ansible/host_vars/db.yml << EOF
+          cat > ansible/host_vars/db_host.yml << EOF
           ansible_host: ${{ needs.terraform-outputs.outputs.db_ip }}
           ansible_ssh_private_key_file: keys/db.pem
           ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyJump='ec2-user@${{ needs.terraform-outputs.outputs.wp_ip }}'"

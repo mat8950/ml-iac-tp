@@ -22,7 +22,7 @@
 - name: Allow WordPress server to connect (pg_hba.conf)
   lineinfile:
     path: /var/lib/pgsql/data/pg_hba.conf
-    line: "host    {{ postgresql_db_name }}    {{ postgresql_db_user }}    {{ hostvars['wordpress']['ansible_host'] }}/32    md5"
+    line: "host    {{ postgresql_db_name }}    {{ postgresql_db_user }}    {{ hostvars['wp_host']['ansible_host'] }}/32    md5"
     insertbefore: "^host"
   notify: Restart postgresql
 
