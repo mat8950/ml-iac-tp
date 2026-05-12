@@ -1,11 +1,20 @@
 locals {
   ssh_rules = length(var.allowed_ssh_cidrs) > 0 ? [{
-    description     = "SSH"
+    description     = "SSH from allowed CIDRs"
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
     cidr_blocks     = var.allowed_ssh_cidrs
     security_groups = []
+  }] : []
+
+  ssh_from_wp_sg_rules = length(var.wordpress_sg_ids) > 0 ? [{
+    description     = "SSH from WordPress SG (Ansible bastion)"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    cidr_blocks     = []
+    security_groups = var.wordpress_sg_ids
   }] : []
 
   mysql_from_sg_rules = length(var.wordpress_sg_ids) > 0 ? [{
@@ -39,6 +48,7 @@ module "sg" {
     local.mysql_from_sg_rules,
     local.mysql_from_cidr_rules,
     local.ssh_rules,
+    local.ssh_from_wp_sg_rules,
     var.extra_ingress_rules
   )
 }

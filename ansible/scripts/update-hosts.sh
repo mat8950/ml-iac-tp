@@ -31,13 +31,13 @@ mkdir -p "${ANSIBLE_DIR}/host_vars"
 
 cat > "${ANSIBLE_DIR}/host_vars/wp_host.yml" << EOF
 ansible_host: ${WP_IP}
-ansible_ssh_private_key_file: keys/wordpress.pem
+ansible_ssh_private_key_file: ${ANSIBLE_DIR}/keys/wordpress.pem
 EOF
 
 cat > "${ANSIBLE_DIR}/host_vars/db_host.yml" << EOF
 ansible_host: ${DB_IP}
-ansible_ssh_private_key_file: keys/db.pem
-ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyJump='ec2-user@${WP_IP}'"
+ansible_ssh_private_key_file: ${ANSIBLE_DIR}/keys/db.pem
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o 'ProxyCommand=ssh -q -i ${ANSIBLE_DIR}/keys/wordpress.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p ec2-user@${WP_IP}'"
 EOF
 
 # ── Chiffrement avec Ansible Vault ────────────────────────────────────────────

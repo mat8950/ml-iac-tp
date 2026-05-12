@@ -76,6 +76,28 @@ jobs:
             --query SecretString --output text > ansible/keys/db.pem
           chmod 600 ansible/keys/wordpress.pem ansible/keys/db.pem
 
+      - name: Setup SSH config
+        env:
+          WP_IP: ${{ needs.terraform-outputs.outputs.wp_ip }}
+          DB_IP: ${{ needs.terraform-outputs.outputs.db_ip }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          cat > ~/.ssh/config << EOF
+          Host ${WP_IP}
+            User ec2-user
+            IdentityFile ${GITHUB_WORKSPACE}/ansible/keys/wordpress.pem
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+
+          Host ${DB_IP}
+            User ec2-user
+            IdentityFile ${GITHUB_WORKSPACE}/ansible/keys/db.pem
+            ProxyJump ec2-user@${WP_IP}
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          EOF
+          chmod 600 ~/.ssh/config
+
       - name: Generate host_vars
         env:
           WP_IP: ${{ needs.terraform-outputs.outputs.wp_ip }}
@@ -83,11 +105,15 @@ jobs:
         run: |
           mkdir -p ansible/host_vars
 
-          printf 'ansible_host: %s\nansible_ssh_private_key_file: keys/wordpress.pem\n' \
-            "$WP_IP" > ansible/host_vars/wp_host.yml
+          printf 'ansible_host: "%s"\nansible_ssh_private_key_file: "%s/ansible/keys/wordpress.pem"\n' \
+            "$WP_IP" "$GITHUB_WORKSPACE" > ansible/host_vars/wp_host.yml
 
-          printf 'ansible_host: %s\nansible_ssh_private_key_file: keys/db.pem\nansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyJump=ec2-user@%s"\n' \
-            "$DB_IP" "$WP_IP" > ansible/host_vars/db_host.yml
+          printf 'ansible_host: "%s"\nansible_ssh_private_key_file: "%s/ansible/keys/db.pem"\n' \
+            "$DB_IP" "$GITHUB_WORKSPACE" > ansible/host_vars/db_host.yml
+
+          echo "=== wp_ip=${WP_IP} db_ip=${DB_IP} ==="
+          echo "--- wp_host.yml ---" && cat ansible/host_vars/wp_host.yml
+          echo "--- db_host.yml ---" && cat ansible/host_vars/db_host.yml
 
       - name: Install Ansible
         run: pip install ansible boto3
